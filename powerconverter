@@ -1,0 +1,87 @@
+#!/bin/env python3
+
+import paho.mqtt.client, datetime, sys
+
+shelly_sub_topic = "shellies/3EM-groepenkast-hoofdruimte/emeter/#"
+lightstate_sub_topic = "revspace/lightstate/#"
+spacestate_sub_topic = "revspace/state"
+pub_topic = "revspace/sensors/power"
+
+fluorescent_power = 54;
+led_panel_power = 33;
+led_tube_power = 20;
+crystal_power = 6;
+small_led_tube_power = 4;
+
+light_power_conversion = {
+  "hoofdruimte_tv": fluorescent_power * 8,
+  "hoofdruimte_bar": fluorescent_power * 17,
+  "keuken": fluorescent_power * 6,
+  "werkplaats": led_panel_power * 20 + led_tube_power,
+  "spacestate": small_led_tube_power + led_tube_power + crystal_power,
+}
+
+power = {
+  "baseline": led_tube_power
+}
+
+print("[{:%Y-%m-%d %H:%M:%S.%f}] Starting...".format(datetime.datetime.now()))
+
+def on_shelly_message(client, obj, msg):
+  # ~ print("[{:%Y-%m-%d %H:%M:%S.%f}]".format(datetime.datetime.now()), msg.topic, msg.payload.decode())
+  # ugly mess to transform a shelly topic into a revspace topic with the meters properly named
+  phase = ["L1", "L2", "L3"][int(msg.topic[len(shelly_sub_topic)-1])]
+  if "power" in msg.topic:
+    power[phase] = float(msg.payload)
+    if "3" in phase:
+      calculate()
+  mqttc.publish(f"{pub_topic}/{phase}/{msg.topic[len(shelly_sub_topic)+1:]}", msg.payload, retain=True)
+
+def on_lightstate_message(client, obj, msg):
+  # ~ print("[{:%Y-%m-%d %H:%M:%S.%f}]".format(datetime.datetime.now()), msg.topic, msg.payload.decode())
+  lamp = msg.topic[len(lightstate_sub_topic)-1:]
+  if msg.payload.decode() == "on":
+    power[lamp] = light_power_conversion[lamp]
+  else:
+    power[lamp] = 0
+  mqttc.publish(f"{pub_topic}/light_{lamp}/power", power[lamp], retain=True)
+  calculate()
+
+def on_spacestate_message(client, obj, msg):
+  # ~ print("[{:%Y-%m-%d %H:%M:%S.%f}]".format(datetime.datetime.now()), msg.topic, msg.payload.decode())
+  if msg.payload.decode() == "open":
+    power["spacestate"] = light_power_conversion["spacestate"]
+  else:
+    power["spacestate"] = 0
+  mqttc.publish(f"{pub_topic}/spacestate/power", power["spacestate"], retain=True)
+  calculate()
+
+def calculate():
+  print(f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S.%f}] {power} Total: {sum(power.values()):.2f}")
+  mqttc.publish(f"{pub_topic}/total/power", f"{sum(power.values()):.2f}", retain=True)
+
+mqttc = paho.mqtt.client.Client()
+
+mqttc.message_callback_add(spacestate_sub_topic, on_spacestate_message)
+mqttc.message_callback_add(lightstate_sub_topic, on_lightstate_message)
+mqttc.message_callback_add(shelly_sub_topic, on_shelly_message)
+
+try:
+  mqttc.connect("mosquitto.space.revspace.nl")
+except ConnectionRefusedError:
+  print("MQTT connection refused. Are you inside the RevSpace network?")
+  sys.exit(42)
+
+mqttc.publish(f"{pub_topic}/baseline/power", power["baseline"], retain=True)
+
+mqttc.subscribe(spacestate_sub_topic)
+mqttc.subscribe(lightstate_sub_topic)
+mqttc.subscribe(shelly_sub_topic)
+
+print("[{:%Y-%m-%d %H:%M:%S.%f}] Started".format(datetime.datetime.now()))
+
+try:
+  while True:
+    mqttc.loop()
+except KeyboardInterrupt:
+  print("[{:%Y-%m-%d %H:%M:%S.%f}] Bye!".format(datetime.datetime.now()))
