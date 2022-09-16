@@ -1,0 +1,8 @@
+[Unit]
+Description=Power Converter
+
+[Service]
+ExecStart=/home/power-mqtt/powerconverter/powerconverter
+
+[Install]
+WantedBy=default.target
