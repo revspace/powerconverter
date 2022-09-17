@@ -25,6 +25,8 @@ power = {
   "baseline": led_tube_power
 }
 
+repeat_time = datetime.datetime.now()
+
 print("[{:%Y-%m-%d %H:%M:%S.%f}] Starting...".format(datetime.datetime.now()))
 
 def on_shelly_message(client, obj, msg):
@@ -37,7 +39,7 @@ def on_shelly_message(client, obj, msg):
     power[phase] = float(msg.payload)
     payload = f"{power[phase]} W"
     if "3" in phase:
-      calculate()
+      calculate_total()
   elif "voltage" in msg.topic:
     payload = f"{msg.payload.decode()} V"
   elif "current" in msg.topic:
@@ -60,7 +62,7 @@ def on_lightstate_message(client, obj, msg):
   else:
     power[lamp] = 0
   mqttc.publish(f"{pub_topic}/light_{lamp}/power", f"{power[lamp]} W", retain=True)
-  calculate()
+  calculate_total()
 
 def on_spacestate_message(client, obj, msg):
   # ~ print("[{:%Y-%m-%d %H:%M:%S.%f}]".format(datetime.datetime.now()), msg.topic, msg.payload.decode())
@@ -69,9 +71,9 @@ def on_spacestate_message(client, obj, msg):
   else:
     power["spacestate"] = 0
   mqttc.publish(f"{pub_topic}/spacestate/power", f"{power['spacestate']} W", retain=True)
-  calculate()
+  calculate_total()
 
-def calculate():
+def calculate_total():
   print(f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S.%f}] {power} Total: {sum(power.values()):.2f}")
   mqttc.publish(f"{pub_topic}/total/power", f"{sum(power.values()):.2f} W", retain=True)
 
@@ -98,5 +100,15 @@ print("[{:%Y-%m-%d %H:%M:%S.%f}] Started".format(datetime.datetime.now()))
 try:
   while True:
     mqttc.loop()
+    now = datetime.datetime.now()
+    if (now - repeat_time).total_seconds() > 60:
+      print(f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S.%f}] Repeating values")
+      repeat_time = now
+      for lamp in list(light_power_conversion.keys())[:4]:
+        mqttc.publish(f"{pub_topic}/light_{lamp}/power", f"{power[lamp]} W", retain=True)
+      for i in ["spacestate", "baseline"]:
+        mqttc.publish(f"{pub_topic}/{i}/power", f"{power[i]} W", retain=True)
+      calculate_total()
+
 except KeyboardInterrupt:
   print("[{:%Y-%m-%d %H:%M:%S.%f}] Bye!".format(datetime.datetime.now()))
