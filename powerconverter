@@ -31,11 +31,26 @@ def on_shelly_message(client, obj, msg):
   # ~ print("[{:%Y-%m-%d %H:%M:%S.%f}]".format(datetime.datetime.now()), msg.topic, msg.payload.decode())
   # ugly mess to transform a shelly topic into a revspace topic with the meters properly named
   phase = ["L1", "L2", "L3"][int(msg.topic[len(shelly_sub_topic)-1])]
-  if "power" in msg.topic:
+  if "returned" in msg.topic:
+    return #no pun intended
+  elif "power" in msg.topic:
     power[phase] = float(msg.payload)
+    payload = f"{power[phase]} W"
     if "3" in phase:
       calculate()
-  mqttc.publish(f"{pub_topic}/{phase}/{msg.topic[len(shelly_sub_topic)+1:]}", msg.payload, retain=True)
+  elif "voltage" in msg.topic:
+    payload = f"{msg.payload.decode()} V"
+  elif "current" in msg.topic:
+    payload = f"{msg.payload.decode()} A"
+  elif "total" in msg.topic:
+    # total energy in Wh (accumulated in Shelly 3EM's non-volatile memory, starting at 2022-09-16)
+    payload = f"{msg.payload.decode()} Wh"
+  elif "energy" in msg.topic:
+    # "energy counter in Watt-minute". yes really.
+    payload = f"{msg.payload.decode()} Wm"
+  else:
+    payload = f"{msg.payload.decode()}"
+  mqttc.publish(f"{pub_topic}/{phase}/{msg.topic[len(shelly_sub_topic)+1:]}", payload, retain=True)
 
 def on_lightstate_message(client, obj, msg):
   # ~ print("[{:%Y-%m-%d %H:%M:%S.%f}]".format(datetime.datetime.now()), msg.topic, msg.payload.decode())
@@ -44,7 +59,7 @@ def on_lightstate_message(client, obj, msg):
     power[lamp] = light_power_conversion[lamp]
   else:
     power[lamp] = 0
-  mqttc.publish(f"{pub_topic}/light_{lamp}/power", power[lamp], retain=True)
+  mqttc.publish(f"{pub_topic}/light_{lamp}/power", f"{power[lamp]} W", retain=True)
   calculate()
 
 def on_spacestate_message(client, obj, msg):
@@ -53,12 +68,12 @@ def on_spacestate_message(client, obj, msg):
     power["spacestate"] = light_power_conversion["spacestate"]
   else:
     power["spacestate"] = 0
-  mqttc.publish(f"{pub_topic}/spacestate/power", power["spacestate"], retain=True)
+  mqttc.publish(f"{pub_topic}/spacestate/power", f"{power['spacestate']} W", retain=True)
   calculate()
 
 def calculate():
   print(f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S.%f}] {power} Total: {sum(power.values()):.2f}")
-  mqttc.publish(f"{pub_topic}/total/power", f"{sum(power.values()):.2f}", retain=True)
+  mqttc.publish(f"{pub_topic}/total/power", f"{sum(power.values()):.2f} W", retain=True)
 
 mqttc = paho.mqtt.client.Client()
 
