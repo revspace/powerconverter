@@ -77,25 +77,26 @@ def calculate_total():
   print(f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S.%f}] {power} Total: {sum(power.values()):.2f}")
   mqttc.publish(f"{pub_topic}/total/power", f"{sum(power.values()):.2f} W", retain=True)
 
+def on_connect(client, userdata, flags, rc):
+  print("[{:%Y-%m-%d %H:%M:%S.%f}] Connected".format(datetime.datetime.now()))
+  mqttc.publish(f"{pub_topic}/baseline/power", power["baseline"], retain=True)
+
+  mqttc.subscribe(spacestate_sub_topic)
+  mqttc.subscribe(lightstate_sub_topic)
+  mqttc.subscribe(shelly_sub_topic)
+
 mqttc = paho.mqtt.client.Client()
 
 mqttc.message_callback_add(spacestate_sub_topic, on_spacestate_message)
 mqttc.message_callback_add(lightstate_sub_topic, on_lightstate_message)
 mqttc.message_callback_add(shelly_sub_topic, on_shelly_message)
+mqttc.on_connect = on_connect
 
 try:
   mqttc.connect("mosquitto.space.revspace.nl")
 except ConnectionRefusedError:
   print("MQTT connection refused. Are you inside the RevSpace network?")
   sys.exit(42)
-
-mqttc.publish(f"{pub_topic}/baseline/power", power["baseline"], retain=True)
-
-mqttc.subscribe(spacestate_sub_topic)
-mqttc.subscribe(lightstate_sub_topic)
-mqttc.subscribe(shelly_sub_topic)
-
-print("[{:%Y-%m-%d %H:%M:%S.%f}] Started".format(datetime.datetime.now()))
 
 try:
   while True:
