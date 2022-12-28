@@ -9,7 +9,7 @@ pub_topic = "revspace/sensors/power"
 
 fluorescent_power = 54;
 led_panel_power = 33;
-led_tube_power = 20;
+led_tube_power = 23;
 crystal_power = 6;
 small_led_tube_power = 4;
 
