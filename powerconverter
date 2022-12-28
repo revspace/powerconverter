@@ -58,7 +58,7 @@ def on_lightstate_message(client, obj, msg):
   # ~ print("[{:%Y-%m-%d %H:%M:%S.%f}]".format(datetime.datetime.now()), msg.topic, msg.payload.decode())
   lamp = msg.topic[len(lightstate_sub_topic)-1:]
   if msg.payload.decode() == "on":
-    power[lamp] = light_power_conversion[lamp]
+    power[lamp] = light_power_conversion.get(lamp, 0)
   else:
     power[lamp] = 0
   mqttc.publish(f"{pub_topic}/light_{lamp}/power", f"{power[lamp]} W", retain=True)
