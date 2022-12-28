@@ -3,7 +3,7 @@
 import paho.mqtt.client, datetime, sys
 
 shelly_sub_topic = "shellies/3EM-groepenkast-hoofdruimte/emeter/#"
-lightstate_sub_topic = "revspace/lightstate/#"
+lightstate_sub_topic = "revspace/lightstate/+"
 spacestate_sub_topic = "revspace/state"
 pub_topic = "revspace/sensors/power"
 
