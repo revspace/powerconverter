@@ -14,10 +14,10 @@ crystal_power = 6;
 small_led_tube_power = 4;
 
 light_power_conversion = {
-  "hoofdruimte_tv": fluorescent_power * 8,
-  "hoofdruimte_bar": fluorescent_power * 17,
-  "keuken": fluorescent_power * 6,
-  "werkplaats": led_panel_power * 20 + led_tube_power,
+  "hoofdruimte_tv": 8 * fluorescent_power,
+  "hoofdruimte_bar": 17 * fluorescent_power,
+  "keuken": 6 * fluorescent_power,
+  "werkplaats": 20 * led_panel_power + led_tube_power,
   "spacestate": small_led_tube_power + led_tube_power + crystal_power,
   "minderlicht": led_tube_power,
 }
