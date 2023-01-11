@@ -75,7 +75,7 @@ def on_spacestate_message(client, obj, msg):
   calculate_total()
 
 def calculate_total():
-  print(f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S.%f}] {power} Total: {sum(power.values()):.2f}")
+  # ~ print(f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S.%f}] {power} Total: {sum(power.values()):.2f}")
   mqttc.publish(f"{pub_topic}/total/power", f"{sum(power.values()):.2f} W", retain=True)
 
 def on_connect(client, userdata, flags, rc):
@@ -104,7 +104,7 @@ try:
     mqttc.loop()
     now = datetime.datetime.now()
     if (now - repeat_time).total_seconds() > 60:
-      print(f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S.%f}] Repeating values")
+      # ~ print(f"[{datetime.datetime.now():%Y-%m-%d %H:%M:%S.%f}] Repeating values")
       repeat_time = now
       for lamp in list(light_power_conversion.keys())[:4]:
         mqttc.publish(f"{pub_topic}/light_{lamp}/power", f"{power[lamp]} W", retain=True)
